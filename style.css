@@ -31,12 +31,13 @@ body {
     color: var(--text-primary);
     font-family: var(--font-main);
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
     position: relative;
-    padding: 20px;
+    padding: 24px 16px;
 }
 
 /* Background Gradients & Blobs */
@@ -61,6 +62,8 @@ body::before {
     z-index: -2;
     pointer-events: none;
     animation: floatBlob 25s infinite alternate ease-in-out;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 .blob-1 {
@@ -122,6 +125,8 @@ body::before {
     pointer-events: none;
     animation: moveParticle linear infinite;
     opacity: 0.6;
+    will-change: transform, opacity;
+    transform: translate3d(0, 0, 0);
 }
 
 @keyframes moveParticle {
@@ -156,6 +161,7 @@ body::before {
     animation: containerIntro 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     transform: translateY(30px);
     opacity: 0;
+    will-change: transform, opacity;
 }
 
 @keyframes containerIntro {
@@ -184,6 +190,7 @@ body::before {
     background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon), var(--accent-gold));
     box-shadow: 0 8px 24px rgba(255, 0, 127, 0.3);
     animation: pulseGlow 4s infinite alternate;
+    will-change: box-shadow;
 }
 
 @keyframes pulseGlow {
@@ -284,6 +291,7 @@ body::before {
     perspective: 1000px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    touch-action: manipulation;
 }
 
 .link-card::before {

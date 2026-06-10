@@ -1,187 +1,136 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Particle System Setup
     const particlesContainer = document.getElementById('particles-container');
-    const particleCount = 20;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
     
-    // Spawn initial floating particles
+    // 1. Optimized Particle System
+    // Reduce initial particle count on mobile to preserve CPU/battery
+    const particleCount = isMobile ? 12 : 25;
+    
+    // Create initial floating particles
     for (let i = 0; i < particleCount; i++) {
-        createParticle(false);
+        createParticle(false, Math.random() * 100);
     }
 
-    // Spawn a particle at a random position or specific coordinate
     function createParticle(isInteractive = false, x = null, y = null) {
         if (!particlesContainer) return;
         
         const particle = document.createElement('div');
         particle.classList.add('particle');
         
-        // Random properties
+        // Optimize sizes and timings
         const size = isInteractive 
-            ? Math.random() * 6 + 3 // Larger interactive particles
-            : Math.random() * 4 + 2; // Normal particles
+            ? Math.random() * 5 + 3  // Interactive particles size
+            : Math.random() * 3.5 + 1.5; // Natural drifting particles size
             
         const duration = isInteractive 
-            ? Math.random() * 2 + 1.5 
-            : Math.random() * 6 + 4;
-            
-        const posX = x !== null ? x : Math.random() * 100; // percent or absolute px
-        const posY = y !== null ? y : null; // if absolute coordinate
+            ? Math.random() * 1.2 + 0.8
+            : Math.random() * 6 + 5;
         
         particle.style.width = `${size}px`;
         particle.style.height = `${size}px`;
         
-        if (posY !== null) {
-            particle.style.left = `${posX}px`;
-            particle.style.top = `${posY}px`;
-            // For interactive spawned particles, we animate them floating outwards/upwards
+        if (isInteractive && y !== null) {
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
             particle.style.transform = `translate(-50%, -50%)`;
-            particle.style.animation = `fadeSpawn ${duration}s ease-out forwards`;
+            particle.style.setProperty('--dx', `${(Math.random() - 0.5) * 80}px`);
+            particle.style.animation = `fadeSpawn ${duration}s cubic-bezier(0.1, 0.8, 0.3, 1) forwards`;
         } else {
-            particle.style.left = `${posX}%`;
+            particle.style.left = `${x !== null ? x : Math.random() * 100}%`;
             particle.style.bottom = `-20px`;
             particle.style.animationDuration = `${duration}s`;
-            // Random horizontal sway
-            particle.style.setProperty('--sway', `${Math.random() * 40 - 20}px`);
+            particle.style.setProperty('--sway', `${Math.random() * 30 - 15}px`);
             particle.style.animationName = 'moveParticle';
         }
         
         particlesContainer.appendChild(particle);
         
-        // Clean up particle
+        // Remove from DOM to keep the node count small
         setTimeout(() => {
             particle.remove();
         }, duration * 1000);
     }
 
-    // Spawn random particles over time
+    // Spawn natural drifting particles at regular intervals
     setInterval(() => {
-        createParticle(false);
-    }, 1200);
+        // Only spawn if tab is active to save resources
+        if (!document.hidden) {
+            createParticle(false);
+        }
+    }, isMobile ? 1800 : 1000);
 
-    // Interactive particles on mouse movement (desktop) and touch (mobile)
-    const handleMove = (e) => {
-        const x = e.clientX || (e.touches && e.touches[0].clientX);
-        const y = e.clientY || (e.touches && e.touches[0].clientY);
-        
-        if (x && y && Math.random() < 0.25) { // Throttle particle creation
-            createParticle(true, x, y);
+    // Throttled interactive particle generator
+    let lastSpawnTime = 0;
+    const spawnThrottle = isMobile ? 80 : 45; // ms between particle spawns
+
+    const handleInteraction = (clientX, clientY) => {
+        const now = performance.now();
+        if (now - lastSpawnTime > spawnThrottle) {
+            createParticle(true, clientX, clientY);
+            lastSpawnTime = now;
         }
     };
 
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('touchmove', handleMove);
+    // Desktop mousemove
+    if (!isMobile) {
+        window.addEventListener('mousemove', (e) => {
+            handleInteraction(e.clientX, e.clientY);
+        }, { passive: true });
+    } else {
+        // Mobile touchmove (spawns particles on swipe)
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: true });
+    }
 
-    // 2. 3D Tilt Effect on Link Cards
-    const cards = document.querySelectorAll('.link-card');
-    
-    cards.forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left; // x position inside element
-            const y = e.clientY - rect.top;  // y position inside element
+    // 2. Performance-minded 3D Tilt Effect (Desktop Only)
+    if (!isMobile) {
+        const cards = document.querySelectorAll('.link-card');
+        cards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const xc = ((x / rect.width) - 0.5) * 2; // -1 to 1
+                const yc = ((y / rect.height) - 0.5) * 2; // -1 to 1
+                
+                card.style.transform = `rotateY(${xc * 6}deg) rotateX(${-yc * 6}deg) translateY(-4px) scale(1.02)`;
+                
+                const content = card.querySelector('.card-content');
+                if (content) {
+                    content.style.background = `rgba(32, 14, 52, 0.75)`;
+                }
+            });
             
-            // Calculate relative offset from center (-0.5 to 0.5)
-            const xc = ((x / rect.width) - 0.5) * 2; // -1 to 1
-            const yc = ((y / rect.height) - 0.5) * 2; // -1 to 1
-            
-            // Maximum tilt angle (degrees)
-            const maxTilt = 8;
-            
-            // Tilt CSS transition
-            card.style.transform = `rotateY(${xc * maxTilt}deg) rotateX(${-yc * maxTilt}deg) translateY(-4px) scale(1.02)`;
-            
-            // Subtle shift of card content overlay light source
-            const content = card.querySelector('.card-content');
-            if (content) {
-                content.style.background = `rgba(30, 13, 50, 0.7)`;
-            }
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'rotateY(0deg) rotateX(0deg) translateY(0) scale(1)';
+                const content = card.querySelector('.card-content');
+                if (content) {
+                    content.style.background = `rgba(20, 9, 36, 0.8)`;
+                }
+            });
         });
-        
-        card.addEventListener('mouseleave', () => {
-            // Reset to original style smoothly
-            card.style.transform = 'rotateY(0deg) rotateX(0deg) translateY(0) scale(1)';
-            const content = card.querySelector('.card-content');
-            if (content) {
-                content.style.background = `rgba(20, 9, 36, 0.8)`;
-            }
-        });
-    });
+    }
 });
 
-// Extra animation keyframes added programmatically for interactive particles
+// Inject keyframe animation dynamically for interactive fade/spawn
 const style = document.createElement('style');
 style.textContent = `
 @keyframes fadeSpawn {
     0% {
-        transform: translate(-50%, -50%) scale(0.2);
+        transform: translate(-50%, -50%) scale(0.3);
         opacity: 0;
     }
-    20% {
-        opacity: 1;
+    15% {
+        opacity: 0.85;
     }
     100% {
-        transform: translate(calc(-50% + (math-random * 60px - 30px)), calc(-50% - 60px)) scale(1.5);
-        opacity: 0;
-    }
-}
-`;
-// Let's create a dynamic keyframe that drifts particles randomly
-style.innerHTML = `
-@keyframes fadeSpawn {
-    0% {
-        transform: translate(-50%, -50%) scale(0.2);
-        opacity: 0;
-    }
-    10% {
-        opacity: 0.8;
-    }
-    100% {
-        transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% - 80px)) scale(1.3);
+        transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% - 60px)) scale(1.2);
         opacity: 0;
     }
 }
 `;
 document.head.appendChild(style);
-
-// Modify createParticle to pass custom CSS variables for displacement direction
-const originalCreateParticle = window.createParticle;
-// We modify createParticle's internal variable setup to handle custom drift:
-// Overwriting the CSS style variable for drift.
-document.addEventListener('mousemove', (e) => {
-    // Inject drift offsets dynamically to particles
-    const container = document.getElementById('particles-container');
-    if (container && Math.random() < 0.2) {
-        const x = e.clientX;
-        const y = e.clientY;
-        const p = document.createElement('div');
-        p.classList.add('particle');
-        p.style.width = '6px';
-        p.style.height = '6px';
-        p.style.left = `${x}px`;
-        p.style.top = `${y}px`;
-        p.style.transform = `translate(-50%, -50%)`;
-        p.style.setProperty('--dx', `${(Math.random() - 0.5) * 80}px`);
-        p.style.animation = `fadeSpawn 1.5s ease-out forwards`;
-        container.appendChild(p);
-        setTimeout(() => p.remove(), 1500);
-    }
-});
-
-document.addEventListener('touchmove', (e) => {
-    const container = document.getElementById('particles-container');
-    if (container && e.touches.length > 0 && Math.random() < 0.2) {
-        const x = e.touches[0].clientX;
-        const y = e.touches[0].clientY;
-        const p = document.createElement('div');
-        p.classList.add('particle');
-        p.style.width = '6px';
-        p.style.height = '6px';
-        p.style.left = `${x}px`;
-        p.style.top = `${y}px`;
-        p.style.transform = `translate(-50%, -50%)`;
-        p.style.setProperty('--dx', `${(Math.random() - 0.5) * 80}px`);
-        p.style.animation = `fadeSpawn 1.5s ease-out forwards`;
-        container.appendChild(p);
-        setTimeout(() => p.remove(), 1500);
-    }
-});
