@@ -115,33 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. Share Button Clipboard Copy & Toast Feedback
-    const shareBtn = document.getElementById('share-btn');
-    const toast = document.getElementById('toast');
-    
-    if (shareBtn && toast) {
-        shareBtn.addEventListener('click', () => {
-            // Copy the current page URL to clipboard
-            navigator.clipboard.writeText(window.location.href)
-                .then(() => {
-                    toast.classList.add('show');
-                    // Add micro-animation bounce to the share button
-                    shareBtn.style.transform = 'scale(0.95)';
-                    setTimeout(() => {
-                        shareBtn.style.transform = '';
-                    }, 150);
-                    
-                    // Hide toast after 2.5 seconds
-                    setTimeout(() => {
-                        toast.classList.remove('show');
-                    }, 2500);
-                })
-                .catch(err => {
-                    console.error('Failed to copy link: ', err);
-                });
-        });
-    }
-
     // 4. Periodic Lead Engagement Trigger (Auto-Shimmer a random link-card)
     const allCards = document.querySelectorAll('.link-card');
     if (allCards.length > 0) {
